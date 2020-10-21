@@ -2,6 +2,7 @@
 #include <razor/gl.h>
 
 #include "./razor_shader.h"
+#include "./razor_render_objects.h"
 
 #include <SDL.h>
 
@@ -14,10 +15,10 @@
 
 static const char *vertex_shader_source = \
         "#version 330 core\n"
-        "layout(location = 0) in vec3 in_Position;\n"
+        "layout(location = 0) in vec2 in_Position;\n"
         "out vec4 vertexColor;\n"
         "void main(void) {\n"
-        "gl_Position = vec4(in_Position, 1.0);\n"
+        "gl_Position = vec4(in_Position, 0.0, 1.0);\n"
         "vertexColor = vec4(0.5, 0.5, 0.0, 1.0);\n"
         "}\n";
 static const char *fragment_shader_source = \
@@ -28,7 +29,7 @@ static const char *fragment_shader_source = \
         "FragColor = vertexColor;\n"
         "}\n";
 
-void rz_RunApplication(const rz_ClientStrategy *strategy)
+void rz_RunApplication(const rz_ClientStrategy *client_strategy)
 {
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
         printf("Failed to init SDL.\n");
@@ -46,70 +47,17 @@ void rz_RunApplication(const rz_ClientStrategy *strategy)
         return;
     }
 
-    strategy->init_func(strategy->user_ptr);
+    client_strategy->init_func(client_strategy->user_ptr);
 
     bool running = true;
 
-    float other_vertices[] = {
-        0.8f, 0.8f, -0.1f,
-        0.8f, -0.8f, -0.1f,
-        -0.8f, -0.8f, -0.1f,
-        -0.8f, 0.8f, -0.1f
-    };
+    rz_Renderer *renderer = rz_Renderer_Create();
 
-    int other_indices[] = {
-        0, 1, 2,
-        0, 2, 3
-    };
+    rz_Quad *quad = rz_Quad_Create((vec2) { 0.5, 0.5 });
+    rz_RenderStrategy *quad_strategy = rz_Quad_GetRenderStrategy(quad);
 
-    GLuint other_vao;
-    glGenVertexArrays(1, &other_vao);
-    glBindVertexArray(other_vao);
-
-    GLuint other_positions;
-    glGenBuffers(1, &other_positions);
-    glBindBuffer(GL_ARRAY_BUFFER, other_positions);
-    glBufferData(GL_ARRAY_BUFFER, sizeof other_vertices, other_vertices, GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, NULL);
-
-    GLuint other_ebo;
-    glGenBuffers(1, &other_ebo);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, other_ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof other_indices, other_indices, GL_STATIC_DRAW);
-
-    float vertices[] = {
-        0.5f, 0.5f, 0.0f,
-        0.5f, -0.5f, 0.0f,
-        -0.5f, -0.5f, 0.0f,
-        -0.5f, 0.5f, 0.0f
-    };
-
-    int indices[] = {
-        0, 1, 2,
-        0, 2, 3
-    };
-
-    GLuint vao;
-    glGenVertexArrays(1, &vao);
-    glBindVertexArray(vao);
-
-    GLuint position_buffer;
-    glGenBuffers(1, &position_buffer);
-    glBindBuffer(GL_ARRAY_BUFFER, position_buffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof vertices, vertices, GL_DYNAMIC_DRAW);
-
-#define VEC3_SIZE 3
-
-    glVertexAttribPointer(0, VEC3_SIZE, GL_FLOAT, GL_FALSE, 0, NULL);
-    glEnableVertexAttribArray(0);
-
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-    GLuint ebo;
-    glGenBuffers(1, &ebo);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof indices, indices, GL_STATIC_DRAW);
+    rz_Clear *clear = rz_Clear_Create((vec4) { 0.0f, 0.0f, 1.0f, 1.0f });
+    rz_RenderStrategy *clear_strategy = rz_Clear_GetRenderStrategy(clear);
 
     rz_Shader *vertex_shader = rz_Shader_Create(RZ_SHADER_TYPE_VERTEX,
             vertex_shader_source);
@@ -132,48 +80,31 @@ void rz_RunApplication(const rz_ClientStrategy *strategy)
                 running = false;
         }
 
-        strategy->update_func(strategy->user_ptr);
-        glClearColor(0.0f, 1.0f, 0.0f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
+        client_strategy->update_func(client_strategy->user_ptr);
 
-        glBindVertexArray(vao);
-        glBindBuffer(GL_ARRAY_BUFFER, position_buffer);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-        glEnableVertexAttribArray(0);
-
-        const size_t buffer_length = sizeof vertices / sizeof vertices[0];
-        float *buffer = glMapBuffer(GL_ARRAY_BUFFER, GL_READ_WRITE);
-
-        if (!buffer) {
-            printf("buffer fucked you over.\n");
-            running = false;
-        }
-
-        for (int i = 0; i < buffer_length / 3; ++i) {
-            buffer[3 * i] += 0.01;
-        }
-
-        if (glUnmapBuffer(GL_ARRAY_BUFFER) != GL_TRUE) {
-            printf("unmapbuffer fucked you over.\n");
-            running = false;
-        }
-        else {
-            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
-        }
-
-        glBindVertexArray(other_vao);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, other_ebo);
-        glEnableVertexAttribArray(0);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
+        rz_Renderer_Render(renderer, clear_strategy);
+        rz_Renderer_Render(renderer, quad_strategy);
 
         SDL_GL_SwapWindow(window);
         SDL_Delay(10);
     }
 
+    rz_Quad_Destroy(quad);
+    rz_RenderStrategy_Destroy(quad_strategy);
+
+    rz_Clear_Destroy(clear);
+    rz_RenderStrategy_Destroy(clear_strategy);
+
+    rz_Renderer_Destroy(renderer);
+
+    rz_Shader_Destroy(vertex_shader);
+    rz_Shader_Destroy(fragment_shader);
+    rz_ShaderProgram_Destroy(program);
+
     SDL_GL_DeleteContext(context);
     SDL_DestroyWindow(window);
     SDL_Quit();
 
-    strategy->uninit_func(strategy->user_ptr);
+    client_strategy->uninit_func(client_strategy->user_ptr);
 }
 

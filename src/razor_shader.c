@@ -58,16 +58,7 @@ rz_ShaderProgram *rz_ShaderProgram_Create()
 
 void rz_ShaderProgram_Destroy(rz_ShaderProgram *shader_program)
 {
-    rz_Shader *node = shader_program->first_shader, *next = NULL;
-
-    while (node != NULL) {
-        next = node->next;
-        rz_Shader_Destroy(node);
-        node = next;
-    }
-
     glDeleteProgram(shader_program->id);
-
     free(shader_program);
 }
 

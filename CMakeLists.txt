@@ -10,11 +10,15 @@ find_package (glad 4.5.2 REQUIRED)
 find_package (SDL2 REQUIRED)
 find_package (rigid 0.1.1 REQUIRED)
 find_package (OpenGL REQUIRED)
+find_package (cglm REQUIRED)
 
 add_library (${PROJECT_NAME} SHARED
         include/razor.h
         "src/razor_game_loop.c"
- "src/razor_shader.c")
+        "src/razor_render_objects.h"
+        "src/razor_shader.h"
+        "src/razor_shader.c"
+ "src/razor_render_objects.c")
 target_include_directories (${PROJECT_NAME} PUBLIC
         $<BUILD_INTERFACE:${${PROJECT_NAME}_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
@@ -23,6 +27,7 @@ target_compile_definitions (${PROJECT_NAME} PRIVATE RZ_BUILD)
 target_link_libraries (${PROJECT_NAME}
         PUBLIC
             rigid::rigid
+            cglm::cglm
         PRIVATE
             SDL2::SDL2
             OpenGL::GL
