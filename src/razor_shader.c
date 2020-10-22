@@ -17,11 +17,6 @@ struct rz_Shader {
     const char source[];
 };
 
-struct rz_ShaderProgram {
-    GLuint id;
-    rz_Shader *first_shader;
-};
-
 rz_Shader *rz_Shader_Create(rz_ShaderType type, const char *source)
 {
     const size_t source_length = strlen(source);

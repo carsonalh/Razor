@@ -18,7 +18,7 @@ add_library (${PROJECT_NAME} SHARED
         "src/razor_render_objects.h"
         "src/razor_shader.h"
         "src/razor_shader.c"
- "src/razor_render_objects.c")
+ "src/razor_render_objects.c" "src/razor_utils.c")
 target_include_directories (${PROJECT_NAME} PUBLIC
         $<BUILD_INTERFACE:${${PROJECT_NAME}_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>

@@ -1,8 +1,9 @@
 #include <razor.h>
 #include <razor/gl.h>
 
-#include "./razor_shader.h"
 #include "./razor_render_objects.h"
+#include "./razor_shader.h"
+#include "./razor_utils.h"
 
 #include <SDL.h>
 
@@ -13,21 +14,13 @@
 #define WIDTH 1080
 #define HEIGHT 720
 
-static const char *vertex_shader_source = \
-        "#version 330 core\n"
-        "layout(location = 0) in vec2 in_Position;\n"
-        "out vec4 vertexColor;\n"
-        "void main(void) {\n"
-        "gl_Position = vec4(in_Position, 0.0, 1.0);\n"
-        "vertexColor = vec4(0.5, 0.5, 0.0, 1.0);\n"
-        "}\n";
-static const char *fragment_shader_source = \
-        "#version 330 core\n"
-        "out vec4 FragColor;\n"
-        "in vec4 vertexColor;\n"
-        "void main(void) {\n"
-        "FragColor = vertexColor;\n"
-        "}\n";
+/*
+future options:
+projections/math
+user input
+textures
+debugging
+*/
 
 void rz_RunApplication(const rz_ClientStrategy *client_strategy)
 {
@@ -35,6 +28,9 @@ void rz_RunApplication(const rz_ClientStrategy *client_strategy)
         printf("Failed to init SDL.\n");
         return;
     }
+
+    const char *vertex_shader_source = rz_LoadFile("../../../../assets/vertex_shader.glsl");
+    const char *fragment_shader_source = rz_LoadFile("../../../../assets/fragment_shader.glsl");
 
     SDL_Window *window = SDL_CreateWindow("Razor Window",
             SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
@@ -51,19 +47,14 @@ void rz_RunApplication(const rz_ClientStrategy *client_strategy)
 
     bool running = true;
 
-    rz_Renderer *renderer = rz_Renderer_Create();
-
-    rz_Quad *quad = rz_Quad_Create((vec2) { 0.5, 0.5 });
-    rz_RenderStrategy *quad_strategy = rz_Quad_GetRenderStrategy(quad);
-
-    rz_Clear *clear = rz_Clear_Create((vec4) { 0.0f, 0.0f, 1.0f, 1.0f });
-    rz_RenderStrategy *clear_strategy = rz_Clear_GetRenderStrategy(clear);
-
     rz_Shader *vertex_shader = rz_Shader_Create(RZ_SHADER_TYPE_VERTEX,
             vertex_shader_source);
 
     rz_Shader *fragment_shader = rz_Shader_Create(RZ_SHADER_TYPE_FRAGMENT,
             fragment_shader_source);
+
+    rz_Camera *main_camera = rz_Camera_Create((float)WIDTH / (float)HEIGHT);
+    rz_Renderer *renderer = rz_Renderer_Create(main_camera);
 
     rz_ShaderProgram *program = rz_ShaderProgram_Create();
     rz_ShaderProgram_AddShader(program, vertex_shader);
@@ -72,6 +63,12 @@ void rz_RunApplication(const rz_ClientStrategy *client_strategy)
 
     rz_ShaderProgram_Bind(program);
 
+    rz_Quad *quad = rz_Quad_Create((vec2) { -1.0f, -1.0f }, (vec2) { 0.5, 0.5 });
+    rz_RenderStrategy *quad_strategy = rz_Quad_GetRenderStrategy(quad, program);
+
+    rz_Clear *clear = rz_Clear_Create((vec4) { 0.0f, 0.0f, 1.0f, 1.0f });
+    rz_RenderStrategy *clear_strategy = rz_Clear_GetRenderStrategy(clear);
+
     while (running) {
         SDL_Event event;
 
@@ -79,6 +76,11 @@ void rz_RunApplication(const rz_ClientStrategy *client_strategy)
             if (event.type == SDL_QUIT)
                 running = false;
         }
+
+        vec2 camera_position;
+        rz_Camera_GetPosition(main_camera, camera_position);
+        camera_position[0] += 0.01f;
+        rz_Camera_SetPosition(main_camera, camera_position);
 
         client_strategy->update_func(client_strategy->user_ptr);
 
