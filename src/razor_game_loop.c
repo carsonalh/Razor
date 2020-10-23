@@ -1,9 +1,10 @@
 #include <razor.h>
-#include <razor/gl.h>
+#include <razor/maths.h>
 
 #include "./razor_render_objects.h"
 #include "./razor_shader.h"
 #include "./razor_utils.h"
+#include "./sdl/razor_sdl_input.h"
 
 #include <SDL.h>
 
@@ -16,8 +17,7 @@
 
 /*
 future options:
-projections/math
-user input
+CLEAN THIS UP OMG IT IS SO BAD ATM
 textures
 debugging
 */
@@ -43,6 +43,8 @@ void rz_RunApplication(const rz_ClientStrategy *client_strategy)
         return;
     }
 
+    rz_InputState *input_state = rz_InputState_Create();
+
     client_strategy->init_func(client_strategy->user_ptr);
 
     bool running = true;
@@ -66,26 +68,97 @@ void rz_RunApplication(const rz_ClientStrategy *client_strategy)
     rz_Quad *quad = rz_Quad_Create((vec2) { -1.0f, -1.0f }, (vec2) { 0.5, 0.5 });
     rz_RenderStrategy *quad_strategy = rz_Quad_GetRenderStrategy(quad, program);
 
-    rz_Clear *clear = rz_Clear_Create((vec4) { 0.0f, 0.0f, 1.0f, 1.0f });
+    rz_Quad *other_quad = rz_Quad_Create((vec2) { 0, 0 }, (vec2) { 1, 1 });
+    rz_RenderStrategy *other_strategy = rz_Quad_GetRenderStrategy(other_quad, program);
+
+    rz_Quad *third_quad = rz_Quad_Create((vec2) { 0, -2.0f }, (vec2) { 2, 2 });
+    rz_RenderStrategy *third_strategy = rz_Quad_GetRenderStrategy(third_quad, program);
+
+    rz_Clear *clear = rz_Clear_Create((vec4) { 0.0f, 0.0f, 0.0f, 1.0f });
     rz_RenderStrategy *clear_strategy = rz_Clear_GetRenderStrategy(clear);
 
     while (running) {
         SDL_Event event;
 
         while (SDL_PollEvent(&event)) {
-            if (event.type == SDL_QUIT)
+            if (event.type == SDL_QUIT) {
                 running = false;
-        }
+            }
+            else if (event.type == SDL_KEYDOWN) {
+                rz_InputEvent input_event = {
+                    .type = RZ_INPUT_EVENT_KEY_PRESS,
+                    .key = rz_SdlKeyToRzKey(event.key.keysym.sym)
+                };
+            }
+            else if (event.type == SDL_MOUSEBUTTONDOWN) {
+                rz_InputEvent input_event = {
+                    .type = RZ_INPUT_EVENT_MOUSE_BUTTON_PRESS,
+                    .mouse_button = rz_SdlMouseButtonToRzMouseButton(event.button.button)
+                };
 
-        vec2 camera_position;
-        rz_Camera_GetPosition(main_camera, camera_position);
-        camera_position[0] += 0.01f;
-        rz_Camera_SetPosition(main_camera, camera_position);
+                if (input_event.mouse_button == RZ_MOUSE_BUTTON_LEFT) {
+                    printf("left mouse clicked.\n");
+                }
+                else if (input_event.mouse_button == RZ_MOUSE_BUTTON_RIGHT) {
+                    printf("right mouse clicked.\n");
+                }
+
+                rz_InputState_AddEvent(input_state, &input_event);
+            }
+            else if (event.type == SDL_MOUSEBUTTONUP) {
+                rz_InputEvent input_event = {
+                    .type = RZ_INPUT_EVENT_MOUSE_BUTTON_RELEASE,
+                    .mouse_button = rz_SdlMouseButtonToRzMouseButton(event.button.button)
+                };
+
+                rz_InputState_AddEvent(input_state, &input_event);
+            }
+            else if (event.type == SDL_MOUSEMOTION) {
+                rz_InputEvent input_event = {
+                    .type = RZ_INPUT_EVENT_MOUSE_MOVE,
+                    .mouse_move_x = event.motion.xrel / (float)(WIDTH / 2),
+                    .mouse_move_y = -event.motion.yrel / (float)(HEIGHT / 2)
+                };
+
+
+                if (rz_InputState_IsMouseButtonDown(input_state, RZ_MOUSE_BUTTON_LEFT)) {
+                    printf("{ x: %.2f, y: %.2f }\n", input_event.mouse_move_x, input_event.mouse_move_y);
+                    float y_scale;
+                    {
+                        vec2 scale;
+                        rz_Camera_GetScale(main_camera, scale);
+                        y_scale = VEC_Y(scale);
+                    }
+                    vec2 position;
+                    rz_Camera_GetPosition(main_camera, position);
+                    VEC_X(position) -= input_event.mouse_move_x * y_scale;
+                    VEC_Y(position) -= input_event.mouse_move_y * y_scale;
+                    rz_Camera_SetPosition(main_camera, position);
+                }
+            }
+            else if (event.type == SDL_MOUSEWHEEL) {
+                rz_InputEvent input_event = {
+                    .type = RZ_INPUT_EVENT_SCROLL,
+                    .mouse_scroll_x = event.wheel.x,
+                    .mouse_scroll_y = event.wheel.y
+                };
+
+                float factor = 1.0f - input_event.mouse_scroll_y / 5.0f;
+                printf("scale: %.2f\n", factor);
+
+                vec2 scale;
+                rz_Camera_GetScale(main_camera, scale);
+                glm_vec2_scale(scale, factor, scale);
+                rz_Camera_SetScale(main_camera, scale);
+            }
+        }
 
         client_strategy->update_func(client_strategy->user_ptr);
 
         rz_Renderer_Render(renderer, clear_strategy);
         rz_Renderer_Render(renderer, quad_strategy);
+        rz_Renderer_Render(renderer, other_strategy);
+        rz_Renderer_Render(renderer, third_strategy);
 
         SDL_GL_SwapWindow(window);
         SDL_Delay(10);

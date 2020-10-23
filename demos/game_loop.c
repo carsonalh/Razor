@@ -10,7 +10,7 @@ void Game_Init(void *user_ptr)
 
 void Game_Update(void *user_ptr)
 {
-    printf("Update game here.\n");
+    //printf("Update game here.\n");
 }
 
 void Game_Uninit(void *user_ptr)

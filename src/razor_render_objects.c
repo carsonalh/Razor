@@ -2,8 +2,7 @@
 #include "./razor_shader.h"
 
 #include <razor/gl.h>
-
-#include <cglm/cglm.h>
+#include <razor/maths.h>
 
 #include <string.h>
 
@@ -54,12 +53,17 @@ static void rz_Quad_ShaderUnbindFunc(rz_Quad *quad, rz_ShaderProgram *program)
 static void rz_Quad_RenderFunc(rz_Quad *quad, mat4 camera_matrix)
 {
     mat4 mvp_matrix;
+    mat4 model_matrix;
 
-    glm_mat4_identity(mvp_matrix);
-    mvp_matrix[3][0] = quad->position[0];
-    mvp_matrix[3][1] = quad->position[1];
+    glm_mat4_identity(model_matrix);
+    VEC_X(model_matrix[3]) = VEC_X(quad->position);
+    VEC_Y(model_matrix[3]) = VEC_Y(quad->position);
+    VEC_X(model_matrix[0]) = VEC_X(quad->size);
+    VEC_Y(model_matrix[1]) = VEC_Y(quad->size);
 
-    glUniformMatrix4fv(quad->mvp_matrix_location, 1, GL_FALSE, camera_matrix);
+    glm_mat4_mul(camera_matrix, model_matrix, mvp_matrix);
+
+    glUniformMatrix4fv(quad->mvp_matrix_location, 1, GL_FALSE, mvp_matrix);
     glBindVertexArray(quad->vao_id);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, quad->ebo_id);
 
@@ -88,7 +92,7 @@ static void rz_Clear_RenderFunc(rz_Clear *clear, mat4 _)
     vec4 color;
     memcpy(color, clear->color, sizeof(vec4));
 
-    float r = color[0], g = color[1], b = color[2], a = color[3];
+    float r = VEC_X(color), g = VEC_Y(color), b = VEC_Z(color), a = VEC_W(color);
     glClearColor(r, g, b, a);
     glClear(GL_COLOR_BUFFER_BIT);
 }
@@ -177,22 +181,19 @@ void rz_Camera_GetViewProjectionMatrix(const rz_Camera *camera, mat4 out)
     mat4 transform_matrix;
 
     glm_mat4_identity(transform_matrix);
-    transform_matrix[0][0] = camera->scale[0];
-    transform_matrix[1][1] = camera->scale[1];
-    transform_matrix[3][0] = camera->position[0];
-    transform_matrix[3][1] = camera->position[1];
+    VEC_X(transform_matrix[0]) = VEC_X(camera->scale);
+    VEC_Y(transform_matrix[1]) = VEC_Y(camera->scale);
+    VEC_X(transform_matrix[3]) = VEC_X(camera->position);
+    VEC_Y(transform_matrix[3]) = VEC_Y(camera->position);
 
     mat4 view_matrix;
     glm_mat4_inv(transform_matrix, view_matrix);
 
     mat4 projection_matrix;
-    glm_ortho_aabb((vec3[2]) {
-        { -camera->aspect_ratio, 1, 1 },
-        { camera->aspect_ratio, -1, -1 }
-    }, projection_matrix);
+    glm_ortho_default(camera->aspect_ratio, projection_matrix);
 
     mat4 view_projection_matrix;
-    glm_mat4_mul(view_matrix, projection_matrix, view_projection_matrix);
+    glm_mat4_mul(projection_matrix, view_matrix, view_projection_matrix);
 
     glm_mat4_copy(view_projection_matrix, out);
 }
@@ -213,13 +214,13 @@ rz_Quad *rz_Quad_Create(vec2 position, vec2 size)
     glBindBuffer(GL_ARRAY_BUFFER, quad->vertices_vbo_id);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, quad->ebo_id);
 
-    float x = quad->size[0], y = quad->size[1];
+    float x = VEC_X(quad->size), y = VEC_Y(quad->size);
 
     float vertices[2 * 4] = {
         0, 0,
-        x, 0,
-        x, y,
-        0, y,
+        1, 0,
+        1, 1,
+        0, 1,
     };
 
     unsigned indices[] = {
