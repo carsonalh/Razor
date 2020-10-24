@@ -1,12 +1,12 @@
 #ifndef RAZOR_RENDER_OBJECTS_H
 #define RAZOR_RENDER_OBJECTS_H
 
+#include <razor.h>
+#include <razor/maths.h>
+
 #include "./razor_shader.h"
 
-#include <cglm/cglm.h>
-
 typedef struct rz_Renderer rz_Renderer;
-typedef struct rz_Camera rz_Camera;
 
 typedef struct rz_RenderStrategy rz_RenderStrategy;
 
@@ -19,15 +19,6 @@ void                rz_Renderer_Destroy(rz_Renderer *);
 void                rz_Renderer_Render(
                             rz_Renderer *, const rz_RenderStrategy *);
 
-rz_Camera          *rz_Camera_Create(float aspect_ratio);
-void                rz_Camera_GetPosition(const rz_Camera *, vec2);
-void                rz_Camera_GetScale(const rz_Camera *, vec2);
-float               rz_Camera_GetRotation(const rz_Camera *);
-float               rz_Camera_GetAspectRatio(const rz_Camera *);
-void                rz_Camera_SetPosition(rz_Camera *, vec2);
-void                rz_Camera_SetScale(rz_Camera *, vec2);
-void                rz_Camera_SetRotation(rz_Camera *, float);
-void                rz_Camera_SetAspectRatio(rz_Camera *, float);
 void                rz_Camera_GetViewProjectionMatrix(
                             const rz_Camera *, mat4 out);
 

@@ -1,6 +1,7 @@
 #include <razor.h>
 #include <razor/maths.h>
 
+#include "./razor_ecs.h"
 #include "./razor_render_objects.h"
 #include "./razor_shader.h"
 #include "./razor_utils.h"
@@ -33,8 +34,8 @@ void rz_RunApplication(const rz_ClientStrategy *client_strategy)
     const char *fragment_shader_source = rz_LoadFile("../../../../assets/fragment_shader.glsl");
 
     SDL_Window *window = SDL_CreateWindow("Razor Window",
-            SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-            WIDTH, HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
+        SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+        WIDTH, HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
 
     SDL_GLContext context = SDL_GL_CreateContext(window);
 
@@ -50,10 +51,10 @@ void rz_RunApplication(const rz_ClientStrategy *client_strategy)
     bool running = true;
 
     rz_Shader *vertex_shader = rz_Shader_Create(RZ_SHADER_TYPE_VERTEX,
-            vertex_shader_source);
+        vertex_shader_source);
 
     rz_Shader *fragment_shader = rz_Shader_Create(RZ_SHADER_TYPE_FRAGMENT,
-            fragment_shader_source);
+        fragment_shader_source);
 
     rz_Camera *main_camera = rz_Camera_Create((float)WIDTH / (float)HEIGHT);
     rz_Renderer *renderer = rz_Renderer_Create(main_camera);
@@ -63,10 +64,14 @@ void rz_RunApplication(const rz_ClientStrategy *client_strategy)
     rz_ShaderProgram_AddShader(program, fragment_shader);
     rz_ShaderProgram_Compile(program);
 
-    rz_ShaderProgram_Bind(program);
+    rz_Transform transform = {
+        .position = { -1.0, -1.0 },
+        .rotation = 0,
+        .scale = { 0.5, 0.5 }
+    };
 
-    rz_Quad *quad = rz_Quad_Create((vec2) { -1.0f, -1.0f }, (vec2) { 0.5, 0.5 });
-    rz_RenderStrategy *quad_strategy = rz_Quad_GetRenderStrategy(quad, program);
+    rz_Entity *quad = rz_Entity_Create();
+    rz_Entity_AddComponent(quad, rz_TransformComponent_Create(&transform));
 
     rz_Quad *other_quad = rz_Quad_Create((vec2) { 0, 0 }, (vec2) { 1, 1 });
     rz_RenderStrategy *other_strategy = rz_Quad_GetRenderStrategy(other_quad, program);
@@ -120,7 +125,6 @@ void rz_RunApplication(const rz_ClientStrategy *client_strategy)
                     .mouse_move_y = -event.motion.yrel / (float)(HEIGHT / 2)
                 };
 
-
                 if (rz_InputState_IsMouseButtonDown(input_state, RZ_MOUSE_BUTTON_LEFT)) {
                     printf("{ x: %.2f, y: %.2f }\n", input_event.mouse_move_x, input_event.mouse_move_y);
                     float y_scale;
@@ -139,8 +143,8 @@ void rz_RunApplication(const rz_ClientStrategy *client_strategy)
             else if (event.type == SDL_MOUSEWHEEL) {
                 rz_InputEvent input_event = {
                     .type = RZ_INPUT_EVENT_SCROLL,
-                    .mouse_scroll_x = event.wheel.x,
-                    .mouse_scroll_y = event.wheel.y
+                    .mouse_scroll_x = (float)event.wheel.x,
+                    .mouse_scroll_y = (float)event.wheel.y
                 };
 
                 float factor = 1.0f - input_event.mouse_scroll_y / 5.0f;
@@ -155,8 +159,9 @@ void rz_RunApplication(const rz_ClientStrategy *client_strategy)
 
         client_strategy->update_func(client_strategy->user_ptr);
 
+        rz_Entity_Update(quad);
+
         rz_Renderer_Render(renderer, clear_strategy);
-        rz_Renderer_Render(renderer, quad_strategy);
         rz_Renderer_Render(renderer, other_strategy);
         rz_Renderer_Render(renderer, third_strategy);
 
@@ -164,8 +169,7 @@ void rz_RunApplication(const rz_ClientStrategy *client_strategy)
         SDL_Delay(10);
     }
 
-    rz_Quad_Destroy(quad);
-    rz_RenderStrategy_Destroy(quad_strategy);
+    rz_Entity_Destroy(quad);
 
     rz_Clear_Destroy(clear);
     rz_RenderStrategy_Destroy(clear_strategy);

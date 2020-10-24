@@ -19,6 +19,8 @@ add_library (${PROJECT_NAME} SHARED
         "include/razor.h"
         "include/razor/gl.h"
         "include/razor/maths.h"
+        "src/razor_ecs.c"
+        "src/razor_ecs.h"
         "src/razor_game_loop.c"
         "src/razor_input.c"
         "src/razor_render_objects.c"
@@ -29,7 +31,7 @@ add_library (${PROJECT_NAME} SHARED
         "src/razor_utils.h"
         "src/sdl/razor_sdl_input.c"
         "src/sdl/razor_sdl_input.h"
- )
+)
 target_include_directories (${PROJECT_NAME} PUBLIC
         $<BUILD_INTERFACE:${${PROJECT_NAME}_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>

@@ -43,11 +43,13 @@ struct rz_RenderStrategy {
 
 static void rz_Quad_ShaderBindFunc(rz_Quad *quad, rz_ShaderProgram *program)
 {
+    rz_ShaderProgram_Bind(program);
     quad->mvp_matrix_location = glGetUniformLocation(program->id, "u_MvpMatrix");
 }
 
 static void rz_Quad_ShaderUnbindFunc(rz_Quad *quad, rz_ShaderProgram *program)
 {
+    rz_ShaderProgram_Unbind(program);
 }
 
 static void rz_Quad_RenderFunc(rz_Quad *quad, mat4 camera_matrix)

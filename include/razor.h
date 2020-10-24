@@ -1,6 +1,8 @@
 #ifndef RAZOR_H
 #define RAZOR_H
 
+#include "./razor/maths.h"
+
 #include <stdbool.h>
 
 #ifdef _WIN32
@@ -110,6 +112,41 @@ RZ_EXPORT bool              rz_InputState_IsKeyDown(rz_InputState *,
                                     const rz_Key);
 RZ_EXPORT bool              rz_InputState_IsMouseButtonDown(rz_InputState *,
                                     const rz_MouseButton);
+
+typedef struct rz_Scene rz_Scene;
+typedef struct rz_Entity rz_Entity;
+typedef struct rz_Component rz_Component;
+typedef struct rz_Camera rz_Camera;
+
+RZ_EXPORT rz_Camera    *rz_Camera_Create(float aspect_ratio);
+RZ_EXPORT void          rz_Camera_GetPosition(const rz_Camera *, vec2);
+RZ_EXPORT void          rz_Camera_GetScale(const rz_Camera *, vec2);
+RZ_EXPORT float         rz_Camera_GetRotation(const rz_Camera *);
+RZ_EXPORT float         rz_Camera_GetAspectRatio(const rz_Camera *);
+RZ_EXPORT void          rz_Camera_SetPosition(rz_Camera *, vec2);
+RZ_EXPORT void          rz_Camera_SetScale(rz_Camera *, vec2);
+RZ_EXPORT void          rz_Camera_SetRotation(rz_Camera *, float);
+RZ_EXPORT void          rz_Camera_SetAspectRatio(rz_Camera *, float);
+
+RZ_EXPORT rz_Scene *rz_Scene_Create(rz_Camera *);
+RZ_EXPORT void rz_Scene_Destroy(rz_Scene *);
+RZ_EXPORT void rz_Scene_Update(rz_Scene *);
+RZ_EXPORT void rz_Scene_AddEntity(rz_Scene *, const rz_Entity *);
+
+RZ_EXPORT rz_Entity *rz_Entity_Create(void);
+RZ_EXPORT void rz_Entity_Destroy(rz_Entity *);
+RZ_EXPORT void rz_Entity_Init(rz_Entity *);
+RZ_EXPORT void rz_Entity_Update(rz_Entity *);
+RZ_EXPORT void rz_Entity_Uninit(rz_Entity *);
+RZ_EXPORT bool rz_Entity_AddComponent(rz_Entity *, const rz_Component *);
+RZ_EXPORT bool rz_Entity_RemoveComponent(rz_Entity *, const rz_Component *);
+RZ_EXPORT bool rz_Entity_HasComponent(rz_Entity *, const rz_Component *);
+
+RZ_EXPORT rz_Component *rz_TransformComponent_Create(const rz_Transform *);
+RZ_EXPORT void rz_TransformComponent_Destroy(rz_Component *);
+
+RZ_EXPORT rz_Component *rz_RenderComponent_Create(void);
+RZ_EXPORT void rz_RenderComponent_Destroy(rz_Component *);
 
 #endif /* RAZOR_H */
 

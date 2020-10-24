@@ -1,3 +1,6 @@
+#ifndef RAZOR_MATHS_H
+#define RAZOR_MATHS_H
+
 #include <cglm/cglm.h>
 
 #define VEC_X(_vec) ((_vec)[0])
@@ -16,4 +19,14 @@
 #define VEC3_Y(_vec) VEC_Y(_vec)
 #define VEC3_Z(_vec) VEC_Z(_vec)
 #define VEC3_W(_vec) VEC_W(_vec)
+
+typedef struct rz_Transform rz_Transform;
+
+struct rz_Transform {
+    vec2 position;
+    float rotation;
+    vec2 scale;
+};
+
+#endif /* RAZOR_MATHS_H */
 
