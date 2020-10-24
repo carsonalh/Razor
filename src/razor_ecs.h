@@ -3,9 +3,9 @@
 
 #include <razor.h>
 
-void rz_Entity_Init(rz_Entity *);
-void rz_Entity_Update(rz_Entity *);
-void rz_Entity_Uninit(rz_Entity *);
+void rz_Component_Init(rz_Component *, rz_Entity *);
+void rz_Component_Uninit(rz_Component *, rz_Entity *);
+void rz_Component_Update(rz_Component *, rz_Entity *);
 
 #endif /* RAZOR_ECS_H */
 

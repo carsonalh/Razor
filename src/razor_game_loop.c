@@ -70,8 +70,19 @@ void rz_RunApplication(const rz_ClientStrategy *client_strategy)
         .scale = { 0.5, 0.5 }
     };
 
-    rz_Entity *quad = rz_Entity_Create();
-    rz_Entity_AddComponent(quad, rz_TransformComponent_Create(&transform));
+    rz_ComponentStrategy strategy;
+    strategy.init_func = rz_QuadComponent_Init;
+    strategy.uninit_func = rz_QuadComponent_Uninit;
+    strategy.update_func = rz_QuadComponent_Update;
+
+    rz_Component *quad_component = rz_Component_Create(&strategy);
+
+    rz_Entity *quad_entity = rz_Entity_Create();
+    rz_Entity_AddComponent(quad_entity, quad_component);
+
+    rz_Entity_Init(quad_entity);
+
+    rz_Scene *scene = rz_Scene_Create(main_camera);
 
     rz_Quad *other_quad = rz_Quad_Create((vec2) { 0, 0 }, (vec2) { 1, 1 });
     rz_RenderStrategy *other_strategy = rz_Quad_GetRenderStrategy(other_quad, program);
@@ -157,9 +168,9 @@ void rz_RunApplication(const rz_ClientStrategy *client_strategy)
             }
         }
 
-        client_strategy->update_func(client_strategy->user_ptr);
+        rz_Entity_Update(quad_entity);
 
-        rz_Entity_Update(quad);
+        client_strategy->update_func(client_strategy->user_ptr);
 
         rz_Renderer_Render(renderer, clear_strategy);
         rz_Renderer_Render(renderer, other_strategy);
@@ -168,8 +179,11 @@ void rz_RunApplication(const rz_ClientStrategy *client_strategy)
         SDL_GL_SwapWindow(window);
         SDL_Delay(10);
     }
+    
+    rz_Entity_Uninit(quad_entity);
+    rz_Entity_Destroy(quad_entity);
 
-    rz_Entity_Destroy(quad);
+    rz_Component_Destroy(quad_component);
 
     rz_Clear_Destroy(clear);
     rz_RenderStrategy_Destroy(clear_strategy);

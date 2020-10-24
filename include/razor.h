@@ -113,9 +113,6 @@ RZ_EXPORT bool              rz_InputState_IsKeyDown(rz_InputState *,
 RZ_EXPORT bool              rz_InputState_IsMouseButtonDown(rz_InputState *,
                                     const rz_MouseButton);
 
-typedef struct rz_Scene rz_Scene;
-typedef struct rz_Entity rz_Entity;
-typedef struct rz_Component rz_Component;
 typedef struct rz_Camera rz_Camera;
 
 RZ_EXPORT rz_Camera    *rz_Camera_Create(float aspect_ratio);
@@ -128,25 +125,39 @@ RZ_EXPORT void          rz_Camera_SetScale(rz_Camera *, vec2);
 RZ_EXPORT void          rz_Camera_SetRotation(rz_Camera *, float);
 RZ_EXPORT void          rz_Camera_SetAspectRatio(rz_Camera *, float);
 
+typedef struct rz_Scene rz_Scene;
+typedef struct rz_Entity rz_Entity;
+typedef struct rz_Component rz_Component;
+typedef struct rz_ComponentStrategy rz_ComponentStrategy;
+
+typedef void (*rz_ComponentInitFunc)(rz_Entity *, void **state);
+typedef void (*rz_ComponentUninitFunc)(rz_Entity *, void **state);
+typedef void (*rz_ComponentUpdateFunc)(rz_Entity *, void **state);
+
+struct rz_ComponentStrategy {
+    rz_ComponentInitFunc init_func;
+    rz_ComponentUninitFunc uninit_func;
+    rz_ComponentUpdateFunc update_func;
+};
+
 RZ_EXPORT rz_Scene *rz_Scene_Create(rz_Camera *);
 RZ_EXPORT void rz_Scene_Destroy(rz_Scene *);
-RZ_EXPORT void rz_Scene_Update(rz_Scene *);
-RZ_EXPORT void rz_Scene_AddEntity(rz_Scene *, const rz_Entity *);
 
 RZ_EXPORT rz_Entity *rz_Entity_Create(void);
 RZ_EXPORT void rz_Entity_Destroy(rz_Entity *);
+RZ_EXPORT void rz_Entity_AddComponent(rz_Entity *, rz_Component *);
 RZ_EXPORT void rz_Entity_Init(rz_Entity *);
-RZ_EXPORT void rz_Entity_Update(rz_Entity *);
 RZ_EXPORT void rz_Entity_Uninit(rz_Entity *);
-RZ_EXPORT bool rz_Entity_AddComponent(rz_Entity *, const rz_Component *);
-RZ_EXPORT bool rz_Entity_RemoveComponent(rz_Entity *, const rz_Component *);
-RZ_EXPORT bool rz_Entity_HasComponent(rz_Entity *, const rz_Component *);
+RZ_EXPORT void rz_Entity_Update(rz_Entity *);
 
-RZ_EXPORT rz_Component *rz_TransformComponent_Create(const rz_Transform *);
-RZ_EXPORT void rz_TransformComponent_Destroy(rz_Component *);
+RZ_EXPORT rz_Component *rz_Component_Create(rz_ComponentStrategy *);
+RZ_EXPORT void rz_Component_Destroy(rz_Component *);
 
-RZ_EXPORT rz_Component *rz_RenderComponent_Create(void);
-RZ_EXPORT void rz_RenderComponent_Destroy(rz_Component *);
+typedef struct rz_Quad rz_Quad;
+
+RZ_EXPORT void rz_QuadComponent_Init(rz_Entity *, rz_Quad **);
+RZ_EXPORT void rz_QuadComponent_Uninit(rz_Entity *, rz_Quad **);
+RZ_EXPORT void rz_QuadComponent_Update(rz_Entity *, rz_Quad **);
 
 #endif /* RAZOR_H */
 
