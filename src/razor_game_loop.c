@@ -1,7 +1,6 @@
 #include <razor.h>
 #include <razor/maths.h>
 
-#include "./razor_ecs.h"
 #include "./razor_render_objects.h"
 #include "./razor_shader.h"
 #include "./razor_utils.h"
@@ -22,6 +21,51 @@ CLEAN THIS UP OMG IT IS SO BAD ATM
 textures
 debugging
 */
+
+typedef struct {
+    rz_Quad *quad;
+    rz_RenderStrategy *render_strategy;
+    rz_ShaderProgram *shader_program;
+} rz_QuadCState;
+
+static void rz_QuadComponent_InitFunc(rz_Component *component, rz_QuadCState **state)
+{
+    const char *vertex_shader_source = rz_LoadFile("../../../../assets/vertex_shader.glsl");
+    const char *fragment_shader_source = rz_LoadFile("../../../../assets/fragment_shader.glsl");
+
+    rz_Shader *vertex_shader = rz_Shader_Create(RZ_SHADER_TYPE_VERTEX,
+        vertex_shader_source);
+
+    rz_Shader *fragment_shader = rz_Shader_Create(RZ_SHADER_TYPE_FRAGMENT,
+        fragment_shader_source);
+
+    rz_ShaderProgram *program = rz_ShaderProgram_Create();
+    rz_ShaderProgram_AddShader(program, vertex_shader);
+    rz_ShaderProgram_AddShader(program, fragment_shader);
+    rz_ShaderProgram_Compile(program);
+
+    rz_Shader_Destroy(vertex_shader);
+    rz_Shader_Destroy(fragment_shader);
+
+    *state = malloc(sizeof * *state);
+    (*state)->quad = rz_Quad_Create((vec2) { -1, -1 }, (vec2) { 1, 1 });
+    (*state)->render_strategy = rz_Quad_GetRenderStrategy((*state)->quad, program);
+    (*state)->shader_program = program;
+}
+
+static void rz_QuadComponent_UpdateFunc(rz_Component *component, rz_QuadCState **state)
+{
+    rz_ShaderProgram_Bind((*state)->shader_program);
+    rz_ShaderProgram_Unbind((*state)->shader_program);
+}
+
+static void rz_QuadComponent_UninitFunc(rz_Component *componnet, rz_QuadCState **state)
+{
+    rz_Quad_Destroy((*state)->quad);
+    rz_RenderStrategy_Destroy((*state)->render_strategy);
+    rz_ShaderProgram_Destroy((*state)->shader_program);
+    free(*state);
+}
 
 void rz_RunApplication(const rz_ClientStrategy *client_strategy)
 {
@@ -44,6 +88,20 @@ void rz_RunApplication(const rz_ClientStrategy *client_strategy)
         return;
     }
 
+    rz_Camera *main_camera = rz_Camera_Create((float)WIDTH / (float)HEIGHT);
+
+    rz_ComponentTemplate template = {
+        .init_func = rz_QuadComponent_InitFunc,
+        .uninit_func = rz_QuadComponent_UninitFunc,
+        .update_func = rz_QuadComponent_UpdateFunc
+    };
+
+    rz_Scene *scene = rz_Scene_Create(main_camera);
+    rz_Entity *quad = rz_Entity_Create(scene);
+    rz_Component *quad_render_component = rz_Component_Create(&template, quad);
+
+    rz_Scene_Init(scene);
+
     rz_InputState *input_state = rz_InputState_Create();
 
     client_strategy->init_func(client_strategy->user_ptr);
@@ -56,9 +114,6 @@ void rz_RunApplication(const rz_ClientStrategy *client_strategy)
     rz_Shader *fragment_shader = rz_Shader_Create(RZ_SHADER_TYPE_FRAGMENT,
         fragment_shader_source);
 
-    rz_Camera *main_camera = rz_Camera_Create((float)WIDTH / (float)HEIGHT);
-    rz_Renderer *renderer = rz_Renderer_Create(main_camera);
-
     rz_ShaderProgram *program = rz_ShaderProgram_Create();
     rz_ShaderProgram_AddShader(program, vertex_shader);
     rz_ShaderProgram_AddShader(program, fragment_shader);
@@ -69,20 +124,6 @@ void rz_RunApplication(const rz_ClientStrategy *client_strategy)
         .rotation = 0,
         .scale = { 0.5, 0.5 }
     };
-
-    rz_ComponentStrategy strategy;
-    strategy.init_func = rz_QuadComponent_Init;
-    strategy.uninit_func = rz_QuadComponent_Uninit;
-    strategy.update_func = rz_QuadComponent_Update;
-
-    rz_Component *quad_component = rz_Component_Create(&strategy);
-
-    rz_Entity *quad_entity = rz_Entity_Create();
-    rz_Entity_AddComponent(quad_entity, quad_component);
-
-    rz_Entity_Init(quad_entity);
-
-    rz_Scene *scene = rz_Scene_Create(main_camera);
 
     rz_Quad *other_quad = rz_Quad_Create((vec2) { 0, 0 }, (vec2) { 1, 1 });
     rz_RenderStrategy *other_strategy = rz_Quad_GetRenderStrategy(other_quad, program);
@@ -168,27 +209,18 @@ void rz_RunApplication(const rz_ClientStrategy *client_strategy)
             }
         }
 
-        rz_Entity_Update(quad_entity);
+        rz_Scene_Update(scene);
 
         client_strategy->update_func(client_strategy->user_ptr);
-
-        rz_Renderer_Render(renderer, clear_strategy);
-        rz_Renderer_Render(renderer, other_strategy);
-        rz_Renderer_Render(renderer, third_strategy);
 
         SDL_GL_SwapWindow(window);
         SDL_Delay(10);
     }
-    
-    rz_Entity_Uninit(quad_entity);
-    rz_Entity_Destroy(quad_entity);
 
-    rz_Component_Destroy(quad_component);
+    rz_Scene_Uninit(scene);
 
     rz_Clear_Destroy(clear);
     rz_RenderStrategy_Destroy(clear_strategy);
-
-    rz_Renderer_Destroy(renderer);
 
     rz_Shader_Destroy(vertex_shader);
     rz_Shader_Destroy(fragment_shader);

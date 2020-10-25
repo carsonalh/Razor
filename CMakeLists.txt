@@ -14,13 +14,13 @@ find_package (SDL2 REQUIRED)
 find_package (rigid 0.1.2 REQUIRED)
 find_package (OpenGL REQUIRED)
 find_package (cglm REQUIRED)
+find_package (memory_debugger 0.1.0 REQUIRED)
 
 add_library (${PROJECT_NAME} SHARED
         "include/razor.h"
         "include/razor/gl.h"
         "include/razor/maths.h"
         "src/razor_ecs.c"
-        "src/razor_ecs.h"
         "src/razor_game_loop.c"
         "src/razor_input.c"
         "src/razor_render_objects.c"
@@ -41,6 +41,7 @@ target_link_libraries (${PROJECT_NAME}
         PUBLIC
             rigid::rigid
             cglm::cglm
+            memory_debugger::memory_debugger
         PRIVATE
             SDL2::SDL2
             OpenGL::GL

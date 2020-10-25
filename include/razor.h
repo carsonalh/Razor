@@ -3,6 +3,7 @@
 
 #include "./razor/maths.h"
 
+#include <stdint.h>
 #include <stdbool.h>
 
 #ifdef _WIN32
@@ -14,6 +15,24 @@
 #else
 #   define RZ_EXPORT
 #endif
+
+typedef unsigned char uchar;
+typedef unsigned short ushort;
+typedef unsigned int uint;
+typedef unsigned long ulong;
+typedef unsigned long long ull;
+
+typedef long long ll;
+
+typedef int8_t int8;
+typedef int16_t int16;
+typedef int32_t int32;
+typedef int64_t int64;
+
+typedef uint8_t uint8;
+typedef uint16_t uint16;
+typedef uint32_t uint32;
+typedef uint64_t uint64;
 
 typedef void (*rz_ClientInitFunc)(void *);
 typedef void (*rz_ClientUpdateFunc)(void *);
@@ -128,36 +147,33 @@ RZ_EXPORT void          rz_Camera_SetAspectRatio(rz_Camera *, float);
 typedef struct rz_Scene rz_Scene;
 typedef struct rz_Entity rz_Entity;
 typedef struct rz_Component rz_Component;
-typedef struct rz_ComponentStrategy rz_ComponentStrategy;
 
-typedef void (*rz_ComponentInitFunc)(rz_Entity *, void **state);
-typedef void (*rz_ComponentUninitFunc)(rz_Entity *, void **state);
-typedef void (*rz_ComponentUpdateFunc)(rz_Entity *, void **state);
+typedef void (*rz_ComponentInitFunc)(rz_Component *, void **state);
+typedef void (*rz_ComponentUpdateFunc)(rz_Component *, void **state);
+typedef void (*rz_ComponentUninitFunc)(rz_Component *, void **state);
 
-struct rz_ComponentStrategy {
+typedef struct {
     rz_ComponentInitFunc init_func;
-    rz_ComponentUninitFunc uninit_func;
     rz_ComponentUpdateFunc update_func;
-};
+    rz_ComponentUninitFunc uninit_func;
+} rz_ComponentTemplate;
 
-RZ_EXPORT rz_Scene *rz_Scene_Create(rz_Camera *);
-RZ_EXPORT void rz_Scene_Destroy(rz_Scene *);
+RZ_EXPORT rz_Scene     *rz_Scene_Create(rz_Camera *);
+RZ_EXPORT void          rz_Scene_Destroy(rz_Scene *);
+RZ_EXPORT rz_Camera    *rz_Scene_GetCamera(rz_Scene *);
+RZ_EXPORT void          rz_Scene_Init(rz_Scene *);
+RZ_EXPORT void          rz_Scene_Update(rz_Scene *);
+RZ_EXPORT void          rz_Scene_Uninit(rz_Scene *);
 
-RZ_EXPORT rz_Entity *rz_Entity_Create(void);
-RZ_EXPORT void rz_Entity_Destroy(rz_Entity *);
-RZ_EXPORT void rz_Entity_AddComponent(rz_Entity *, rz_Component *);
-RZ_EXPORT void rz_Entity_Init(rz_Entity *);
-RZ_EXPORT void rz_Entity_Uninit(rz_Entity *);
-RZ_EXPORT void rz_Entity_Update(rz_Entity *);
+RZ_EXPORT rz_Entity    *rz_Entity_Create(rz_Scene *);
+RZ_EXPORT void          rz_Entity_Destroy(rz_Entity *);
+RZ_EXPORT bool          rz_Entity_HasComponent(rz_Entity *, rz_Component *);
+RZ_EXPORT rz_Scene     *rz_Entity_GetScene(rz_Entity *);
 
-RZ_EXPORT rz_Component *rz_Component_Create(rz_ComponentStrategy *);
-RZ_EXPORT void rz_Component_Destroy(rz_Component *);
-
-typedef struct rz_Quad rz_Quad;
-
-RZ_EXPORT void rz_QuadComponent_Init(rz_Entity *, rz_Quad **);
-RZ_EXPORT void rz_QuadComponent_Uninit(rz_Entity *, rz_Quad **);
-RZ_EXPORT void rz_QuadComponent_Update(rz_Entity *, rz_Quad **);
+RZ_EXPORT rz_Component *rz_Component_Create(rz_ComponentTemplate *, rz_Entity *);
+RZ_EXPORT void          rz_Component_Destroy(rz_Component *);
+RZ_EXPORT rz_Entity    *rz_Component_GetEntity(rz_Component *);
+RZ_EXPORT rz_Scene     *rz_Component_GetScene(rz_Component *);
 
 #endif /* RAZOR_H */
 

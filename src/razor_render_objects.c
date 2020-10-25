@@ -99,33 +99,6 @@ static void rz_Clear_RenderFunc(rz_Clear *clear, mat4 _)
     glClear(GL_COLOR_BUFFER_BIT);
 }
 
-rz_Renderer *rz_Renderer_Create(const rz_Camera *camera)
-{
-    rz_Renderer *renderer = malloc(sizeof(rz_Renderer));
-    renderer->camera = camera;
-    return renderer;
-}
-
-void rz_Renderer_SetCamera(rz_Renderer *renderer, const rz_Camera *camera)
-{
-    renderer->camera = camera;
-}
-
-void rz_Renderer_Destroy(rz_Renderer *renderer)
-{
-    free(renderer);
-}
-
-void rz_Renderer_Render(rz_Renderer *renderer, const rz_RenderStrategy *strategy)
-{
-    mat4 camera_matrix;
-    rz_Camera_GetViewProjectionMatrix(renderer->camera, camera_matrix);
-
-    strategy->shader_bind_func(strategy->instance, strategy->shader_program);
-    strategy->render_func(strategy->instance, camera_matrix);
-    strategy->shader_unbind_func(strategy->instance, strategy->shader_program);
-}
-
 rz_Camera *rz_Camera_Create(float aspect_ratio)
 {
     rz_Camera *camera = malloc(sizeof * camera);

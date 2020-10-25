@@ -1,10 +1,8 @@
 #include <razor.h>
-#include <razor/maths.h>
-
-#include "./razor_ecs.h"
-#include "./razor_render_objects.h"
 
 #include <rigid.h>
+
+#include "./razor_render_objects.h"
 
 struct rz_Scene {
     rz_Camera *camera;
@@ -12,29 +10,23 @@ struct rz_Scene {
 };
 
 struct rz_Entity {
+    rz_Scene *scene;
     rz_Transform transform;
     rg_List components;
 };
 
 struct rz_Component {
-    rz_ComponentStrategy *strategy;
-    void *state;
+    rz_ComponentTemplate *template;
+    rz_Entity *entity;
+    void **state;
 };
-
-#define FOR_EACH_LIST(_type, _var, _list) \
-        for ( \
-                _type *_i = 0, *_var; \
-                _var = rg_List_Get(_list, (int)_i), \
-                        (int)_i < rg_List_GetSize(_list); \
-                ++(int8_t*)_i \
-        )
 
 rz_Scene *rz_Scene_Create(rz_Camera *camera)
 {
-    rz_Scene *scene = malloc(sizeof * scene);
-    scene->camera = camera;
-    _rg_List_Init(&scene->entities, sizeof(rz_Entity), 0);
-    return scene;
+    rz_Scene *s = malloc(sizeof * s);
+    s->camera = camera;
+    _rg_List_Init(&s->entities, sizeof(rz_Entity), 0);
+    return s;
 }
 
 void rz_Scene_Destroy(rz_Scene *scene)
@@ -43,111 +35,126 @@ void rz_Scene_Destroy(rz_Scene *scene)
     free(scene);
 }
 
-rz_Entity *rz_Entity_Create(void)
+rz_Camera *rz_Scene_GetCamera(rz_Scene *scene)
 {
-    rz_Entity *e = malloc(sizeof * e);
-    _rg_List_Init(&e->components, sizeof(rz_Component), 0);
-    return e;
+    return scene->camera;
+}
+
+void rz_Scene_Init(rz_Scene *scene)
+{
+    size_t num_entities = rg_List_GetSize(&scene->entities);
+    for (int i = 0; i < num_entities; ++i) {
+        rz_Entity *e = rg_List_Get(&scene->entities, i);
+        size_t num_components = rg_List_GetSize(&e->components);
+
+        for (int j = 0; j < num_components; ++j) {
+            rz_Component *c = rg_List_Get(&e->components, j);
+            c->template->init_func(c, &c->state);
+        }
+    }
+}
+
+void rz_Scene_Update(rz_Scene *scene)
+{
+    size_t num_entities = rg_List_GetSize(&scene->entities);
+    for (int i = 0; i < num_entities; ++i) {
+        rz_Entity *e = rg_List_Get(&scene->entities, i);
+        size_t num_components = rg_List_GetSize(&e->components);
+
+        for (int j = 0; j < num_components; ++j) {
+            rz_Component *c = rg_List_Get(&e->components, j);
+            c->template->update_func(c, &c->state);
+        }
+    }
+}
+
+void rz_Scene_Uninit(rz_Scene *scene)
+{
+    size_t num_entities = rg_List_GetSize(&scene->entities);
+    for (int i = 0; i < num_entities; ++i) {
+        rz_Entity *e = rg_List_Get(&scene->entities, i);
+        size_t num_components = rg_List_GetSize(&e->components);
+
+        for (int j = 0; j < num_components; ++j) {
+            rz_Component *c = rg_List_Get(&e->components, j);
+            c->template->uninit_func(c, &c->state);
+        }
+    }
+}
+
+rz_Entity *rz_Entity_Create(rz_Scene *scene)
+{
+    rz_Entity e = {
+        .transform = {
+            .position = { 0, 0 },
+            .rotation = 0.0f,
+            .scale = { 1, 1 }
+        },
+        .scene = scene
+    };
+
+    _rg_List_Init(&e.components, sizeof(rz_Component), 0);
+    rg_List_InsertEnd(&scene->entities, &e);
+
+    const size_t num_entities = rg_List_GetSize(&scene->entities);
+    rz_Entity *in_place = rg_List_Get(&scene->entities, num_entities - 1);
+
+    return in_place;
 }
 
 void rz_Entity_Destroy(rz_Entity *entity)
 {
+    rg_List *scene_entities = &entity->scene->entities;
+    rz_Entity *first = rg_List_Get(scene_entities, 0);
+    uint index = entity - first;
+
     _rg_List_Uninit(&entity->components);
-    free(entity);
+    rg_List_Delete(scene_entities, index);
 }
 
-void rz_Entity_AddComponent(rz_Entity *entity, rz_Component *component)
+bool rz_Entity_HasComponent(rz_Entity *entity, rz_Component *component)
 {
-    rg_List_InsertEnd(&entity->components, component);
+    rz_Component *start, *end;
+    size_t num_components = rg_List_GetSize(&entity->components);
+    start = rg_List_Get(&entity->components, 0);
+    end = rg_List_Get(&entity->components, num_components - 1);
+    return start <= component && component <= end;
 }
 
-void rz_Entity_Init(rz_Entity *entity)
+rz_Scene *rz_Entity_GetScene(rz_Entity *entity)
 {
-    FOR_EACH_LIST(rz_Component, c, &entity->components) {
-        rz_Component_Init(c, entity);
-    }
+    return entity->scene;
 }
 
-void rz_Entity_Uninit(rz_Entity *entity)
+rz_Component *rz_Component_Create(rz_ComponentTemplate *template, rz_Entity *entity)
 {
-    FOR_EACH_LIST(rz_Component, c, &entity->components) {
-        rz_Component_Uninit(c, entity);
-    }
-}
+    rz_Component c = {
+        .template = template,
+        .entity = entity
+    };
 
-void rz_Entity_Update(rz_Entity *entity)
-{
-    FOR_EACH_LIST(rz_Component, c, &entity->components) {
-        rz_Component_Update(c, entity);
-    }
-}
-
-rz_Component *rz_Component_Create(rz_ComponentStrategy *strategy)
-{
-    rz_Component *c = malloc(sizeof * c);
-    c->strategy = strategy;
-    return c;
+    rg_List_InsertEnd(&entity->components, &c);
+    size_t num_components = rg_List_GetSize(&entity->components);
+    rz_Component *in_place = rg_List_Get(&entity->components, num_components - 1);
+    return in_place;
 }
 
 void rz_Component_Destroy(rz_Component *component)
 {
-    free(component);
+    rg_List *entity_components = &component->entity->components;
+    rz_Component *first = rg_List_Get(entity_components, 0);
+    uint index = component - first;
+
+    rg_List_Delete(entity_components, index);
 }
 
-void rz_Component_Init(rz_Component *component, rz_Entity *entity)
+rz_Entity *rz_Component_GetEntity(rz_Component *component)
 {
-    if (component->strategy->init_func) {
-        component->strategy->init_func(entity, &component->state);
-    }
+    return component->entity;
 }
 
-void rz_Component_Uninit(rz_Component *component, rz_Entity *entity)
+rz_Scene *rz_Component_GetScene(rz_Component *component)
 {
-    if (component->strategy->uninit_func) {
-        component->strategy->uninit_func(entity, &component->state);
-    }
-}
-
-void rz_Component_Update(rz_Component *component, rz_Entity *entity)
-{
-    if (component->strategy->update_func) {
-        component->strategy->update_func(entity, &component->state);
-    }
-}
-
-typedef struct {
-    rz_Quad *quad;
-    rz_RenderStrategy *strategy;
-} QuadState;
-
-void rz_QuadComponent_Init(rz_Entity *entity, QuadState **state)
-{
-    *state = malloc(sizeof * *state);
-    (*state)->quad = rz_Quad_Create(
-            entity->transform.position, entity->transform.scale);
-    (*state)->strategy = rz_Quad_GetRenderStrategy((*state)->quad, /* refer to rz_QuadComponent_Update() */);
-}
-
-void rz_QuadComponent_Uninit(rz_Entity *entity, QuadState **state)
-{
-    printf("quad uninit here.\n");
-}
-
-void rz_QuadComponent_Update(rz_Entity *entity, QuadState **state) {
-    /*
-PROBLEM: WE NEED ACCESS TO THE RENDERER HERE, AND DON'T EVEN HAVE ACCESS TO THE
-SCENE; (OR THE CAMERA) THERE ARE A FEW OPTIONS WE CAN GO THROUGH TO SOLVE THIS
-PROBLEM:
-1. MAKE THE RENDERER A SINGLETON
-2. GIVE EACH ENTITY A POINTER TO ITS RESPECTIVE SCENE, AND GIVE THE SCENE A
-POINTER TO THE RENDERER
-3. RE-DESIGN THE RENDERER SO THAT IT IS NOT STATE-BASED AT ALL (ALTHOUGH YOU'LL
-HAVE TO CONVINCE THE SYSTEM DESIGNER THAT THE RENDERE WON'T HAVE TO HAVE ANY
-CPU STATE IN ITS LIFECYCLE THROUGHOUT THE ENTIRE DEVELOPMENT OF THE ENGINE ->
-ACTUALLY THIS SEEMS PLAUSIBLE, ATM THE ONLY STATE THE RENDERER HAS IS THE
-CAMERA, BUT IF WE PASS THAT, ALONG WITH THE RENDER TARGET, WE COULD TURN THE
-RENDER STATE SYSTEM INTO ONE FUNCTION. THIS COULD EVEN WORK FOR BATCH SYSTEMS,
-WHERE THE BATCH IS PREPARED AS ONE TARGET USING SOME OTHER SYSTEM, THAT CAN
-THEN BE RENDERED AS IF IT WERE ONE OBJECT BY THE RENDERER. */
+    return component->entity->scene;
 }
 
